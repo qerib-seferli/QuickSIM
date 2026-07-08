@@ -235,41 +235,118 @@ document.getElementById('alert-close-btn').onclick = () => {
   document.getElementById('custom-alert').classList.add('hidden');
 };
 
-// 1. Unikal İstifadəçi Girişi və Balans Təyini
+
+
+
+
+// 1. Unikal İstifadəçi Girişi və Balans Təyini (Google Auth)
 async function initializeUser() {
   if (!supabaseClient) return;
 
+  // Mövcud sessiyanı yoxlayırıq
   let { data: { session } } = await supabaseClient.auth.getSession();
   
+  // Əgər istifadəçi giriş etməyibsə, interfeysdə yalnız Giriş Düyməsini göstəririk
   if (!session) {
-    const { data, error } = await supabaseClient.auth.signInAnonymously();
-    if (error) {
-      console.error("Giriş xətası:", error.message);
-      return;
-    }
-    session = data.session;
+    showLoginOverlay();
+    return;
   }
 
+  // Giriş uğurludursa, overlay-i gizlədirik
+  hideLoginOverlay();
   CURRENT_USER_ID = session.user.id;
 
-  // Profilin varlığını yoxla
-  const { data: profile } = await supabaseClient
-    .from('profiles')
-    .select('balance')
-    .eq('id', CURRENT_USER_ID)
-    .maybeSingle();
-
-  // Əgər profil yoxdursa yaradılır və dərhal balans yenilənir
-  if (!profile) {
-    await supabaseClient
+  try {
+    // Profilin mövcudluğunu yoxlayırıq
+    const { data: profile, error } = await supabaseClient
       .from('profiles')
-      .insert([{ id: CURRENT_USER_ID, balance: 10.00 }]);
-  }
+      .select('balance')
+      .eq('id', CURRENT_USER_ID)
+      .maybeSingle();
 
-  // Balansı mütləq şəkildə ekrana basırıq
-  await loadUserBalance();
-  await checkActiveOrder();
+    if (error) throw error;
+
+    // Əgər bu Gmail ilə İLK DƏFƏ girirsə, profil yaradırıq və 10 AZN veririk
+    if (!profile) {
+      const { error: insertError } = await supabaseClient
+        .from('profiles')
+        .insert([{ id: CURRENT_USER_ID, balance: 10.00 }]);
+        
+      if (insertError) throw insertError;
+      console.log("Yeni istifadəçi qeydə alındı, 10 AZN balans təyin edildi.");
+    }
+
+    // Balansı ekrana yazdırırıq və aktiv sifarişləri yoxlayırıq
+    await loadUserBalance();
+    await checkActiveOrder();
+
+  } catch (err) {
+    console.error("Profil tənzimlənərkən xəta:", err.message);
+  }
 }
+
+// Google ilə Giriş funksiyası
+async function signInWithGoogle() {
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // İstifadəçi daxil olduqdan sonra yönləndiriləcək ünvan (GitHub Pages linkin)
+        redirectTo: window.location.origin + window.location.pathname
+      }
+    });
+    if (error) throw error;
+  } catch (error) {
+    alert("Google ilə giriş zamanı xəta baş verdi: " + error.message);
+  }
+}
+
+// Çıxış funksiyası (Ehtiyac olarsa harasa qoyarsan)
+async function handleSignOut() {
+  await supabaseClient.auth.signOut();
+  window.location.reload();
+}
+
+// Giriş pəncərəsini göstərmək və gizlətmək üçün köməkçi funksiyalar
+function showLoginOverlay() {
+  let overlay = document.getElementById("login-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "login-overlay";
+    overlay.className = "fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-6 text-center animate-fade-in";
+    overlay.innerHTML = `
+      <div class="max-w-xs w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-5">
+        <div class="text-4xl">⚡</div>
+        <h2 class="text-xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">QuickSIM-ə Xoş Gəldiniz</h2>
+        <p class="text-xs text-slate-400 leading-relaxed">Daxil olun, balansınıza pulsuz <span class="text-emerald-400 font-bold">10.00 AZN</span> hədiyyə alın və dərhal virtual nömrə sifariş edin!</p>
+        <button id="btn-google-login" class="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-lg shadow-white/5">
+          <svg class="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.53-1.14 2.82-2.4 3.68v3.06h3.88c2.27-2.09 3.57-5.17 3.57-8.59Z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.06c-1.08.72-2.45 1.16-4.05 1.16-3.11 0-5.74-2.11-6.68-4.96H1.21v3.15C3.18 21.88 7.31 24 12 24Z"/>
+            <path fill="#FBBC05" d="M5.32 14.23c-.24-.73-.38-1.5-.38-2.23s.14-1.5.38-2.23V6.62H1.21C.44 8.24 0 10.07 0 12s.44 3.76 1.21 5.38l4.11-3.15Z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.93 1.19 15.22 0 12 0 7.31 0 3.18 2.12 1.21 5.38l4.11 3.15c.94-2.85 3.57-4.96 6.68-4.96Z"/>
+          </svg>
+          Google ilə Daxil Ol
+        </button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    
+    document.getElementById("btn-google-login").addEventListener("click", signInWithGoogle);
+  }
+  overlay.classList.remove("hidden");
+}
+
+function hideLoginOverlay() {
+  const overlay = document.getElementById("login-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+
+
+
+
+
 
 // 2. Balansı Yüklə və DOM-a Yaz
 async function loadUserBalance() {
