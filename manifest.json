@@ -1,0 +1,16 @@
+{
+  "name": "QuickSIM - WhatsApp Virtual Numbers",
+  "short_name": "QuickSIM",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/724/724664.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
