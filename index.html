@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickSIM - Virtual WhatsApp Nömrələri</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">⚡</span>
+      <h1 class="text-xl font-bold tracking-wider text-emerald-400">QuickSIM</h1>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-sm">
+        Balans: <span id="user-balance" class="font-bold text-emerald-400">0.00</span> AZN
+      </div>
+      <button id="btn-add-funds" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-sm transition">
+        + Artır
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-md w-full mx-auto p-4 space-y-6">
+
+    <section class="bg-slate-800/50 p-4 rounded-xl border border-slate-800">
+      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">1. Ölkə Seçin (WhatsApp)</h2>
+      <div class="space-y-2 max-h-60 overflow-y-auto pr-1" id="countries-list">
+        </div>
+    </section>
+
+    <section id="active-order-section" class="hidden bg-slate-800 border-2 border-emerald-500/30 p-5 rounded-xl space-y-4 shadow-xl shadow-emerald-950/20">
+      <div class="flex justify-between items-center">
+        <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full font-medium">Nömrəniz Hazırdır</span>
+        <span id="order-timer" class="text-rose-400 font-mono font-bold text-lg">15:00</span>
+      </div>
+
+      <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
+        <span id="display-number" class="text-xl font-mono tracking-widest text-slate-200 font-bold">---</span>
+        <button id="btn-copy-num" class="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded hover:bg-emerald-500/20 active:scale-95 transition">
+          Kopyala
+        </button>
+      </div>
+
+      <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-800 text-center space-y-2">
+        <p class="text-xs text-slate-400">WhatsApp-da nömrəni daxil edin və kod göndərin. SMS gözlənilir...</p>
+        <div id="sms-loader" class="animate-pulse text-sm text-amber-400 font-medium py-2">⚡ Canlı bağlantı qurulur...</div>
+        <div id="display-sms" class="hidden text-3xl font-mono font-black text-emerald-400 tracking-widest bg-emerald-500/10 py-3 rounded border border-emerald-500/30 animate-bounce">
+          ------
+        </div>
+      </div>
+
+      <button id="btn-cancel-order" class="w-full bg-slate-700/50 hover:bg-rose-500 hover:text-white text-slate-400 text-sm font-medium py-2 rounded-lg transition">
+        Sifarişi İptal Et (Balansı Geri Al)
+      </button>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
+</body>
+</html>
