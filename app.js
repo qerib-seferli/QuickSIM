@@ -3,7 +3,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-// Dünya Ölkələrinin Geniş Siyahısı
+// Sənin Yenilədiyin Tam Ölkə Siyahısı
 const countriesData = [
   { id: 0, name: "Rusiya", price: 0.40, rate: "92%", flag: "🇷🇺", code: "+7" },
   { id: 1, name: "Ukrayna", price: 0.60, rate: "95%", flag: "🇺🇦", code: "+380" },
@@ -37,9 +37,9 @@ const countriesData = [
   { id: 29, name: "Avstraliya", price: 1.05, rate: "96%", flag: "🇦🇺", code: "+61" },
   { id: 30, name: "Yeni Zelandiya", price: 1.10, rate: "97%", flag: "🇳🇿", code: "+64" },
   { id: 31, name: "Səudiyyə Ərəbistanı", price: 0.80, rate: "93%", flag: "🇸🇦", code: "+966" },
-  { id: 32, "BƏƏ", price: 0.95, rate: "96%", flag: "🇦🇪", code: "+971" },
+  { id: 32, name: "BƏƏ", price: 0.95, rate: "96%", flag: "🇦🇪", code: "+971" },
   { id: 33, name: "Qətər", price: 1.20, rate: "97%", flag: "🇶🇦", code: "+974" },
-  { id: 34, name: "Küveyt", price: 1.15, rate: "95%", flag: "🇰🇼", code: "+965" },
+  { id: 34, name: "Küveyt", price: 1.15, text: "95%", flag: "🇰🇼", code: "+965" },
   { id: 35, name: "Bəhreyn", price: 0.90, rate: "94%", flag: "🇧🇭", code: "+973" },
   { id: 36, name: "Oman", price: 0.85, rate: "93%", flag: "🇴🇲", code: "+968" },
   { id: 37, name: "Misir", price: 0.35, rate: "87%", flag: "🇪🇬", code: "+20" },
@@ -103,8 +103,6 @@ const countriesData = [
   { id: 95, name: "Bosniya və Herseqovina", price: 0.55, rate: "90%", flag: "🇧🇦", code: "+387" },
   { id: 96, name: "Monteneqro", price: 0.65, rate: "92%", flag: "🇲🇪", code: "+382" },
   { id: 97, name: "Şimali Makedoniya", price: 0.55, rate: "90%", flag: "🇲🇰", code: "+389" },
-  { id: 98, name: "Albaniya", price: 0.55, rate: "91%", flag: "🇦🇱", code: "+355" },
-  { id: 99, name: "İsveç", price: 1.25, rate: "98%", flag: "🇸🇪", code: "+46" },
   { id: 100, name: "Norveç", price: 1.40, rate: "99%", flag: "🇳🇴", code: "+47" },
   { id: 101, name: "Danimarka", price: 1.30, rate: "98%", flag: "🇩🇰", code: "+45" },
   { id: 102, name: "Finlandiya", price: 1.20, rate: "98%", flag: "🇫🇮", code: "+358" },
@@ -220,14 +218,29 @@ const btnCopyNum = document.getElementById('btn-copy-num');
 const btnAddFunds = document.getElementById('btn-add-funds');
 const searchInput = document.getElementById('search-country');
 
-// 1. Unikal İstifadəçi Seansı və Avtomatik 10 AZN Balans
+// Özəl Alert Sistemi (Brauzerin pop-up pəncərələrini əvəz edir)
+function showMessage(text, icon = "⚠️") {
+  const alertModal = document.getElementById('custom-alert');
+  const alertMsg = document.getElementById('alert-message');
+  const alertIcon = document.getElementById('alert-icon');
+  
+  if (alertModal && alertMsg && alertIcon) {
+    alertIcon.innerText = icon;
+    alertMsg.innerText = text;
+    alertModal.classList.remove('hidden');
+  }
+}
+
+document.getElementById('alert-close-btn').onclick = () => {
+  document.getElementById('custom-alert').classList.add('hidden');
+};
+
+// 1. Unikal İstifadəçi Girişi və Balans Təyini
 async function initializeUser() {
   if (!supabaseClient) return;
 
-  // Mövcud sessiyanı yoxla
   let { data: { session } } = await supabaseClient.auth.getSession();
   
-  // Əgər sessiya yoxdursa, yeni Anonim istifadəçi yarat (Hər cihaz üçün fərqli ID)
   if (!session) {
     const { data, error } = await supabaseClient.auth.signInAnonymously();
     if (error) {
@@ -239,40 +252,44 @@ async function initializeUser() {
 
   CURRENT_USER_ID = session.user.id;
 
-  // Profil varmı deyə yoxla, yoxdursa 10 AZN-lə yarat
+  // Profilin varlığını yoxla
   const { data: profile } = await supabaseClient
     .from('profiles')
     .select('balance')
     .eq('id', CURRENT_USER_ID)
-    .single();
+    .maybeSingle();
 
+  // Əgər profil yoxdursa yaradılır və dərhal balans yenilənir
   if (!profile) {
     await supabaseClient
       .from('profiles')
       .insert([{ id: CURRENT_USER_ID, balance: 10.00 }]);
   }
 
+  // Balansı mütləq şəkildə ekrana basırıq
   await loadUserBalance();
-  await checkActiveOrder(); // Səhifə yenilənəndə yarımçıq sifarişi yoxla
+  await checkActiveOrder();
 }
 
-// 2. Balansı Yaxşılaşdırılmış Şəkildə Yüklə
+// 2. Balansı Yüklə və DOM-a Yaz
 async function loadUserBalance() {
   if (!supabaseClient || !CURRENT_USER_ID) return 0;
   const { data } = await supabaseClient
     .from('profiles')
     .select('balance')
     .eq('id', CURRENT_USER_ID)
-    .single();
+    .maybeSingle();
 
   if (data) {
     balanceEl.innerText = parseFloat(data.balance).toFixed(2);
     return data.balance;
+  } else {
+    balanceEl.innerText = "10.00";
+    return 10.00;
   }
-  return 0;
 }
 
-// 3. Yarımçıq Qalan Sifarişləri Yoxla (Yenilənmə Qoruyucusu)
+// 3. Aktiv Yarımçıq Sifarişlərin Yoxlanılması
 async function checkActiveOrder() {
   const { data: orders } = await supabaseClient
     .from('orders')
@@ -284,8 +301,6 @@ async function checkActiveOrder() {
 
   if (orders && orders.length > 0) {
     const activeOrder = orders[0];
-    
-    // Keçən zamanı hesabla (15 dəqiqə limit)
     const orderTime = new Date(activeOrder.created_at).getTime();
     const now = new Date().getTime();
     const diffSeconds = Math.floor((now - orderTime) / 1000);
@@ -296,14 +311,13 @@ async function checkActiveOrder() {
       showOrderUI(activeOrder, limit - diffSeconds);
       listenToOrderChanges(activeOrder.id);
     } else {
-      // Vaxtı keçibsə avtomatik ləğv et
       await supabaseClient.from('orders').update({ status: 'canceled' }).eq('id', activeOrder.id);
       loadUserBalance();
     }
   }
 }
 
-// 4. Ölkələri Siyahıla və Axtarış Sistemini Aktiv Et
+// 4. Ölkə Siyahısının DOM Renderingi
 function renderCountries(filterText = "") {
   countriesListEl.innerHTML = '';
   const filtered = countriesData.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()));
@@ -333,16 +347,16 @@ function renderCountries(filterText = "") {
   });
 }
 
-// 5. Nömrə Satın Al
+// 5. Nömrə Satın Alma Əməliyyatı
 async function buyNumber(country) {
   if (!supabaseClient || currentOrderId) {
-    if(currentOrderId) alert("Hazırda aktiv bir sifarişiniz var!");
+    if(currentOrderId) showMessage("Hazırda aktiv bir sifarişiniz var!", "🚫");
     return;
   }
   
   const currentBalance = await loadUserBalance();
   if (currentBalance < country.price) {
-    alert("Balansınız yetərli deyil!");
+    showMessage("Balansınız kifayət etmir!", "💸");
     return;
   }
 
@@ -362,13 +376,11 @@ async function buyNumber(country) {
     currentOrderId = order.id;
     showOrderUI(order, 15 * 60);
     listenToOrderChanges(order.id);
-    
-    // PROVAYDER SİMULYASİYASI (Real SMS API qoşulanadək test rejimi)
     simulateProviderAPI(order.id, country.code);
   }
 }
 
-// 6. Sifariş İnterfeysi və Taymer
+// 6. Sifariş UI idarəetməsi
 function showOrderUI(order, durationSeconds) {
   activeSection.classList.remove('hidden');
   activeSection.scrollIntoView({ behavior: 'smooth' });
@@ -399,7 +411,7 @@ function showOrderUI(order, durationSeconds) {
   }, 1000);
 }
 
-// 7. Real-time Dinləyici
+// 7. Canlı Dinləmə Modulu
 function listenToOrderChanges(orderId) {
   if (!supabaseClient) return;
   if (activeOrderSubscription) supabaseClient.removeChannel(activeOrderSubscription);
@@ -423,7 +435,7 @@ function listenToOrderChanges(orderId) {
     .subscribe();
 }
 
-// 8. Sifarişi İptal Et
+// 8. Sifarişin İptal Edilməsi
 async function cancelOrder() {
   if (!supabaseClient || !currentOrderId) return;
   
@@ -437,13 +449,12 @@ async function cancelOrder() {
     activeSection.classList.add('hidden');
     currentOrderId = null;
     loadUserBalance();
-    alert("Sifariş ləğv edildi və balans geri qaytarıldı.");
+    showMessage("Sifariş ləğv edildi, məbləğ balansınıza qaytarıldı.", "🔄");
   }
 }
 
-// 9. Sənədli Test Rejimi Provayder Simulyasiyası
+// 9. Provayder Test Simulyasiyası
 function simulateProviderAPI(orderId, countryCode) {
-  // 3 saniyə sonra nömrə generasiya olunur və bazaya yazılır
   setTimeout(async () => {
     if (currentOrderId !== orderId) return;
     const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
@@ -452,7 +463,6 @@ function simulateProviderAPI(orderId, countryCode) {
     await supabaseClient.from('orders').update({ phone_number: mockNumber }).eq('id', orderId);
     numDisplay.innerText = mockNumber;
 
-    // Nömrə gəldikdən 7 saniyə sonra bura virtual SMS təsdiq kodu düşür
     setTimeout(async () => {
       if (currentOrderId !== orderId) return;
       const mockSMS = Math.floor(100000 + Math.random() * 900000);
@@ -462,17 +472,18 @@ function simulateProviderAPI(orderId, countryCode) {
   }, 3000);
 }
 
-// Event Listeners
+// Event Dinləyiciləri
 searchInput.oninput = (e) => renderCountries(e.target.value);
 btnCancel.onclick = () => cancelOrder();
 btnCopyNum.onclick = () => {
   navigator.clipboard.writeText(numDisplay.innerText);
-  alert("Nömrə kopyalandı!");
+  showMessage("Nömrə müvəffəqiyyətlə kopyalandı!", "📋");
 };
 btnAddFunds.onclick = async () => {
   if (!supabaseClient || !CURRENT_USER_ID) return;
-  const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).single();
-  await supabaseClient.from('profiles').update({ balance: (data.balance + 5.00) }).eq('id', CURRENT_USER_ID);
+  const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).maybeSingle();
+  const currentBal = data ? data.balance : 0;
+  await supabaseClient.from('profiles').update({ balance: (currentBal + 5.00) }).eq('id', CURRENT_USER_ID);
   loadUserBalance();
 };
 
