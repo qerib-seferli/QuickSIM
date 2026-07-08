@@ -1,20 +1,19 @@
-const CACHE_NAME = 'quicksim-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.json'
-];
+// Köhnə keşləri və servisi tamamilə dövriyyədən çıxaran təmizləyici Service Worker
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => caches.delete(cache))
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
-  );
+self.addEventListener('fetch', (event) => {
+  // Heç bir keşi oxuma, birbaşa internetdən (şəbəkədən) çək
+  event.respondWith(fetch(event.request));
 });
