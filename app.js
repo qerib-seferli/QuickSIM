@@ -1,6 +1,6 @@
 // SUPABASE KONFİQURASİYASI
-const SUPABASE_URL = "SƏNİN_SUPABASE_URL_ÜNVANIN";
-const SUPABASE_ANON_KEY = "SƏNİN_SUPABASE_ANON_KEY_DƏYƏRİN";
+const SUPABASE_URL = "https://kjhudctuuvfjgbifgjky.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqaHVkY3R1dXZmamdiaWZnamt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTIxMTQsImV4cCI6MjA5OTA4ODExNH0.NGvxhUFFnTrVukZL8E2brAz1aZ7yGm5GwsTo9y2nhSs";
 
 const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
