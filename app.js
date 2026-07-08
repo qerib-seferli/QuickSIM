@@ -2,12 +2,13 @@
 const SUPABASE_URL = "https://kjhudctuuvfjgbifgjky.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqaHVkY3R1dXZmamdiaWZnamt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTIxMTQsImV4cCI6MjA5OTA4ODExNH0.NGvxhUFFnTrVukZL8E2brAz1aZ7yGm5GwsTo9y2nhSs";
 
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Qlobal obyektlə toqquşmaması üçün adı dəyişdirildi
+const supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// İmitasiya edilmiş Cari İstifadəçi ID (Sisteminizdə qeydiyyat olanda dinamikləşəcək)
+// İmitasiya edilmiş Cari İstifadəçi ID
 const CURRENT_USER_ID = "88888888-8888-8888-8888-888888888888"; 
 
-// Ölkələrin Siyahısı (Uğur reytinqləri ilə birlikdə topdan satış qiymətinə əsasən tənzimlənir)
+// Ölkələrin Siyahısı
 const countriesData = [
   { id: 0, name: "Rusiya", price: 0.40, rate: "92%", flag: "🇷🇺" },
   { id: 1, name: "Ukrayna", price: 0.60, rate: "95%", flag: "🇺🇦" },
@@ -34,7 +35,7 @@ const btnAddFunds = document.getElementById('btn-add-funds');
 
 // 1. İstifadəçi Balansını Yüklə
 async function loadUserBalance() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('profiles')
     .select('balance')
     .eq('id', CURRENT_USER_ID)
@@ -78,8 +79,8 @@ async function buyNumber(country) {
     return;
   }
 
-  // Müştəridən pul çıx və sifariş yarat
-  const { data: order, error: orderError } = await supabase
+  // Sifariş yarat və balansı idarə et
+  const { data: order, error: orderError } = await supabaseClient
     .from('orders')
     .insert([
       { 
@@ -87,7 +88,7 @@ async function buyNumber(country) {
         country_id: country.id, 
         price: country.price,
         status: 'pending',
-        phone_number: 'Yüklənir...' // Edge function və ya backend provayderdən nömrəni bura yazacaq
+        phone_number: 'Yüklənir...' 
       }
     ])
     .select()
@@ -108,7 +109,6 @@ function showOrderUI(order) {
   smsLoader.classList.remove('hidden');
   smsLoader.innerText = "⏳ Provayderdən nömrə alınır və ya SMS gözlənilir...";
   
-  // 15 dəqiqəlik geri sayım
   clearInterval(countdownInterval);
   let timeLeft = 15 * 60;
   countdownInterval = setInterval(() => {
@@ -127,27 +127,25 @@ function showOrderUI(order) {
 // 5. SUPABASE REAL-TIME: Sifariş masasını canlı izlə
 function listenToOrderChanges(orderId) {
   if (activeOrderSubscription) {
-    supabase.removeChannel(activeOrderSubscription);
+    supabaseClient.removeChannel(activeOrderSubscription);
   }
 
-  activeOrderSubscription = supabase
+  activeOrderSubscription = supabaseClient
     .channel(`order-changes-${orderId}`)
     .on('postgres_changes', { event: 'UPDATE', filter: `id=eq.${orderId}`, schema: 'public', table: 'orders' }, payload => {
       const updatedOrder = payload.new;
       
-      // Nömrə təyin olunduqda ekranda yenilə
       if (updatedOrder.phone_number) {
         numDisplay.innerText = updatedOrder.phone_number;
       }
       
-      // SMS kodu gəldikdə ekranda göstər
       if (updatedOrder.status === 'sms_received' && updatedOrder.sms_code) {
         clearInterval(countdownInterval);
         smsLoader.classList.add('hidden');
         smsDisplay.innerText = updatedOrder.sms_code;
         smsDisplay.classList.remove('hidden');
-        loadUserBalance(); // Balans yenilənməsini vizual göstər
-        if (activeOrderSubscription) supabase.removeChannel(activeOrderSubscription);
+        loadUserBalance(); 
+        if (activeOrderSubscription) supabaseClient.removeChannel(activeOrderSubscription);
       }
     })
     .subscribe();
@@ -157,7 +155,7 @@ function listenToOrderChanges(orderId) {
 async function cancelOrder() {
   if (!currentOrderId) return;
   
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('orders')
     .update({ status: 'canceled' })
     .eq('id', currentOrderId);
@@ -179,10 +177,10 @@ btnCopyNum.onclick = () => {
 
 btnCancel.onclick = () => cancelOrder();
 
-// Pul Artırma Simulasiyası (Cryptomus qoşulana qədər balansı test etmək üçün)
+// Pul Artırma Simulasiyası
 btnAddFunds.onclick = async () => {
-  const { data } = await supabase.from('profiles').select('balance').eq('id', CURRENT_USER_ID).single();
-  await supabase.from('profiles').update({ balance: (data.balance + 5.00) }).eq('id', CURRENT_USER_ID);
+  const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).single();
+  await supabaseClient.from('profiles').update({ balance: (data.balance + 5.00) }).eq('id', CURRENT_USER_ID);
   loadUserBalance();
 };
 
