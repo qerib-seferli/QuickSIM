@@ -1,11 +1,24 @@
+// 1. SUPABASE KİTABXANASININ DİNAMİK YÜKLƏNMƏSİ (ZƏMANƏTLİ METOD)
+function loadSupabaseLibrary() {
+  return new Promise((resolve, reject) => {
+    if (window.Supabase) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Supabase CDN yüklənmədi!"));
+    document.head.appendChild(script);
+  });
+}
+
+// Global dəyişən (Kitabxana yükləndikdən sonra təyin olunacaq)
+let supabaseClient = null;
+
 // SUPABASE KONFİQURASİYASI
 const SUPABASE_URL = "https://kjhudctuuvfjgbifgjky.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqaHVkY3R1dXZmamdiaWZnamt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTIxMTQsImV4cCI6MjA5OTA4ODExNH0.NGvxhUFFnTrVukZL8E2brAz1aZ7yGm5GwsTo9y2nhSs";
-
-// Qlobal obyektlə toqquşmaması üçün adı dəyişdirildi
-const supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// İmitasiya edilmiş Cari İstifadəçi ID
 const CURRENT_USER_ID = "88888888-8888-8888-8888-888888888888"; 
 
 // Ölkələrin Siyahısı
@@ -71,7 +84,7 @@ function renderCountries() {
   });
 }
 
-// 3. Nömrə Satın Al (Sifariş Yarat)
+// 3. Nömrə Satın Al
 async function buyNumber(country) {
   const currentBalance = await loadUserBalance();
   if (currentBalance < country.price) {
@@ -79,7 +92,6 @@ async function buyNumber(country) {
     return;
   }
 
-  // Sifariş yarat və balansı idarə et
   const { data: order, error: orderError } = await supabaseClient
     .from('orders')
     .insert([
@@ -101,7 +113,7 @@ async function buyNumber(country) {
   }
 }
 
-// 4. Sifariş İnterfeysini Göstər və Taymeri Başlat
+// 4. Sifariş İnterfeysi
 function showOrderUI(order) {
   activeSection.classList.remove('hidden');
   numDisplay.innerText = order.phone_number;
@@ -124,7 +136,7 @@ function showOrderUI(order) {
   }, 1000);
 }
 
-// 5. SUPABASE REAL-TIME: Sifariş masasını canlı izlə
+// 5. Real-time Dinləyici
 function listenToOrderChanges(orderId) {
   if (activeOrderSubscription) {
     supabaseClient.removeChannel(activeOrderSubscription);
@@ -151,7 +163,7 @@ function listenToOrderChanges(orderId) {
     .subscribe();
 }
 
-// 6. Sifarişi İptal Et (Geri Ödəmə)
+// 6. Sifarişi İptal Et
 async function cancelOrder() {
   if (!currentOrderId) return;
   
@@ -169,7 +181,6 @@ async function cancelOrder() {
   }
 }
 
-// Kopyalama Funksiyası
 btnCopyNum.onclick = () => {
   navigator.clipboard.writeText(numDisplay.innerText);
   alert("Nömrə kopyalandı!");
@@ -177,15 +188,23 @@ btnCopyNum.onclick = () => {
 
 btnCancel.onclick = () => cancelOrder();
 
-// Pul Artırma Simulasiyası
 btnAddFunds.onclick = async () => {
   const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).single();
   await supabaseClient.from('profiles').update({ balance: (data.balance + 5.00) }).eq('id', CURRENT_USER_ID);
   loadUserBalance();
 };
 
-// Sistemi Başlat
-window.onload = () => {
-  loadUserBalance();
-  renderCountries();
+// SİSTEMİ BAŞLAT (Öncə təhlükəsiz şəkildə kitabxana yüklənir)
+window.onload = async () => {
+  try {
+    await loadSupabaseLibrary();
+    // Kitabxana uğurla yükləndikdən sonra müştəri instansiyası yaradılır
+    supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Funksiyalar icra olunur
+    loadUserBalance();
+    renderCountries();
+  } catch (err) {
+    console.error(err.message);
+  }
 };
