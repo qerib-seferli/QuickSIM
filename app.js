@@ -18,7 +18,7 @@ const countriesData = [
 
 let activeOrderSubscription = null;
 let countdownInterval = null;
-let currentOrderId = null;
+let currentOrderId = null; 
 
 // DOM Elementləri
 const balanceEl = document.getElementById('user-balance');
