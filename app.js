@@ -1,25 +1,10 @@
-// 1. SUPABASE KİTABXANASININ DİNAMİK YÜKLƏNMƏSİ (ZƏMANƏTLİ METOD)
-function loadSupabaseLibrary() {
-  return new Promise((resolve, reject) => {
-    if (window.Supabase) {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Supabase CDN yüklənmədi!"));
-    document.head.appendChild(script);
-  });
-}
-
-// Global dəyişən (Kitabxana yükləndikdən sonra təyin olunacaq)
-let supabaseClient = null;
-
-// SUPABASE KONFİQURASİYASI
-const SUPABASE_URL = "https://kjhudctuuvfjgbifgjky.supabase.co";
+// SUPABASE KONFİQURASİYASI (Düzgün URL formatı)
+const SUPABASE_URL = "https://kjhudctuuvfjgbifgjky.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqaHVkY3R1dXZmamdiaWZnamt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTIxMTQsImV4cCI6MjA5OTA4ODExNH0.NGvxhUFFnTrVukZL8E2brAz1aZ7yGm5GwsTo9y2nhSs";
 const CURRENT_USER_ID = "88888888-8888-8888-8888-888888888888"; 
+
+// Müştəri instansiyası (Toqquşma olmaması üçün fərqli adla)
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Ölkələrin Siyahısı
 const countriesData = [
@@ -48,6 +33,7 @@ const btnAddFunds = document.getElementById('btn-add-funds');
 
 // 1. İstifadəçi Balansını Yüklə
 async function loadUserBalance() {
+  if (!supabaseClient) return 0;
   const { data, error } = await supabaseClient
     .from('profiles')
     .select('balance')
@@ -86,6 +72,7 @@ function renderCountries() {
 
 // 3. Nömrə Satın Al
 async function buyNumber(country) {
+  if (!supabaseClient) return;
   const currentBalance = await loadUserBalance();
   if (currentBalance < country.price) {
     alert("Balansınız yetərli deyil! Zəhmət olmasa artırın.");
@@ -138,6 +125,7 @@ function showOrderUI(order) {
 
 // 5. Real-time Dinləyici
 function listenToOrderChanges(orderId) {
+  if (!supabaseClient) return;
   if (activeOrderSubscription) {
     supabaseClient.removeChannel(activeOrderSubscription);
   }
@@ -146,11 +134,9 @@ function listenToOrderChanges(orderId) {
     .channel(`order-changes-${orderId}`)
     .on('postgres_changes', { event: 'UPDATE', filter: `id=eq.${orderId}`, schema: 'public', table: 'orders' }, payload => {
       const updatedOrder = payload.new;
-      
       if (updatedOrder.phone_number) {
         numDisplay.innerText = updatedOrder.phone_number;
       }
-      
       if (updatedOrder.status === 'sms_received' && updatedOrder.sms_code) {
         clearInterval(countdownInterval);
         smsLoader.classList.add('hidden');
@@ -165,7 +151,7 @@ function listenToOrderChanges(orderId) {
 
 // 6. Sifarişi İptal Et
 async function cancelOrder() {
-  if (!currentOrderId) return;
+  if (!supabaseClient || !currentOrderId) return;
   
   const { error } = await supabaseClient
     .from('orders')
@@ -189,22 +175,18 @@ btnCopyNum.onclick = () => {
 btnCancel.onclick = () => cancelOrder();
 
 btnAddFunds.onclick = async () => {
+  if (!supabaseClient) return;
   const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).single();
   await supabaseClient.from('profiles').update({ balance: (data.balance + 5.00) }).eq('id', CURRENT_USER_ID);
   loadUserBalance();
 };
 
-// SİSTEMİ BAŞLAT (Öncə təhlükəsiz şəkildə kitabxana yüklənir)
-window.onload = async () => {
-  try {
-    await loadSupabaseLibrary();
-    // Kitabxana uğurla yükləndikdən sonra müştəri instansiyası yaradılır
-    supabaseClient = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // Funksiyalar icra olunur
-    loadUserBalance();
-    renderCountries();
-  } catch (err) {
-    console.error(err.message);
+// Sistemi Başlat
+window.onload = () => {
+  if (!window.supabase) {
+    console.error("Supabase kitabxanası tapılmadı! HTML yoxlanılmalıdır.");
+    return;
   }
+  loadUserBalance();
+  renderCountries();
 };
