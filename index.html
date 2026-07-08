@@ -8,18 +8,18 @@
   <link rel="manifest" href="manifest.json">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased">
 
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+  <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex justify-between items-center max-w-md w-full mx-auto">
     <div class="flex items-center gap-2">
-      <span class="text-2xl">⚡</span>
-      <h1 class="text-xl font-bold tracking-wider text-emerald-400">QuickSIM</h1>
+      <span class="text-2xl animate-pulse">⚡</span>
+      <h1 class="text-xl font-black tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">QuickSIM</h1>
     </div>
-    <div class="flex items-center gap-4">
-      <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-sm">
-        Balans: <span id="user-balance" class="font-bold text-emerald-400">0.00</span> AZN
+    <div class="flex items-center gap-3">
+      <div class="bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 text-xs font-medium shadow-inner">
+        Balans: <span id="user-balance" class="font-bold text-emerald-400 text-sm">0.00</span> AZN
       </div>
-      <button id="btn-add-funds" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-3 py-1.5 rounded-lg text-sm transition">
+      <button id="btn-add-funds" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer">
         + Artır
       </button>
     </div>
@@ -27,34 +27,42 @@
 
   <main class="flex-1 max-w-md w-full mx-auto p-4 space-y-6">
 
-    <section class="bg-slate-800/50 p-4 rounded-xl border border-slate-800">
-      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">1. Ölkə Seçin (WhatsApp)</h2>
-      <div class="space-y-2 max-h-60 overflow-y-auto pr-1" id="countries-list">
+    <section class="bg-slate-900/40 p-4 rounded-2xl border border-slate-900 shadow-xl space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest">1. Ölkə Seçin (WhatsApp)</h2>
+      </div>
+      
+      <div class="relative">
+        <input type="text" id="search-country" placeholder="Ölkə adı axtarın... (məs. Türkiyə)" 
+               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 transition-all shadow-inner">
+      </div>
+
+      <div class="space-y-2.5 max-h-72 overflow-y-auto pr-1" id="countries-list">
         </div>
     </section>
 
-    <section id="active-order-section" class="hidden bg-slate-800 border-2 border-emerald-500/30 p-5 rounded-xl space-y-4 shadow-xl">
+    <section id="active-order-section" class="hidden bg-slate-900 border border-emerald-500/30 p-5 rounded-2xl space-y-4 shadow-2xl shadow-emerald-950/10 transition-all duration-300">
       <div class="flex justify-between items-center">
-        <span class="text-xs bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full font-medium">Nömrəniz Hazırdır</span>
-        <span id="order-timer" class="text-rose-400 font-mono font-bold text-lg">15:00</span>
+        <span class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full font-semibold border border-emerald-500/10">Sifariş Aktivdir</span>
+        <span id="order-timer" class="text-rose-400 font-mono font-black text-lg bg-rose-500/5 px-2 py-0.5 rounded-md">15:00</span>
       </div>
 
-      <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
-        <span id="display-number" class="text-xl font-mono tracking-widest text-slate-200 font-bold">---</span>
-        <button id="btn-copy-num" class="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded hover:bg-emerald-500/20 transition">
+      <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 flex justify-between items-center shadow-inner">
+        <span id="display-number" class="text-xl font-mono tracking-wider text-slate-200 font-black">---</span>
+        <button id="btn-copy-num" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg hover:bg-emerald-500 hover:text-slate-950 transition-all active:scale-95 cursor-pointer">
           Kopyala
         </button>
       </div>
 
-      <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-800 text-center space-y-2">
-        <p class="text-xs text-slate-400">WhatsApp-da nömrəni daxil edin. SMS gözlənilir...</p>
-        <div id="sms-loader" class="animate-pulse text-sm text-amber-400 font-medium py-2">⚡ Canlı bağlantı qurulur...</div>
-        <div id="display-sms" class="hidden text-3xl font-mono font-black text-emerald-400 tracking-widest bg-emerald-500/10 py-3 rounded border border-emerald-500/30">
+      <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-900 text-center space-y-3">
+        <p class="text-xs text-slate-400 font-medium">WhatsApp tətbiqində nömrəni daxil edin və kod gözləyin.</p>
+        <div id="sms-loader" class="animate-pulse text-xs text-amber-400 font-semibold py-1">⚡ Provayderdən nömrə alınır...</div>
+        <div id="display-sms" class="hidden text-3xl font-mono font-black text-emerald-400 tracking-widest bg-emerald-500/10 py-3.5 rounded-xl border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
           ------
         </div>
       </div>
 
-      <button id="btn-cancel-order" class="w-full bg-slate-700/50 hover:bg-rose-500 hover:text-white text-slate-400 text-sm font-medium py-2 rounded-lg transition">
+      <button id="btn-cancel-order" class="w-full bg-slate-800/40 hover:bg-rose-500/10 hover:text-rose-400 text-slate-400 text-xs font-bold py-3 rounded-xl border border-transparent hover:border-rose-500/20 transition-all active:scale-[0.98] cursor-pointer">
         Sifarişi İptal Et (Balansı Geri Al)
       </button>
     </section>
