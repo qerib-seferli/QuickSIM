@@ -1,0 +1,19 @@
+/* Custom Scrollbar for country list */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
