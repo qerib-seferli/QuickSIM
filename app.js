@@ -3,7 +3,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-// Sənin Yenilədiyin Tam Ölkə Siyahısı
+// Tam Ölkə Siyahısı
 const countriesData = [
   { id: 0, name: "Rusiya", price: 0.40, rate: "92%", flag: "🇷🇺", code: "+7" },
   { id: 1, name: "Ukrayna", price: 0.60, rate: "95%", flag: "🇺🇦", code: "+380" },
@@ -63,7 +63,7 @@ const countriesData = [
   { id: 55, name: "Maldiv adaları", price: 0.80, rate: "94%", flag: "🇲🇻", code: "+960" },
   { id: 56, name: "Nepal", price: 0.30, rate: "86%", flag: "🇳🇵", code: "+977" },
   { id: 57, name: "Butan", price: 0.40, rate: "89%", flag: "🇧🇹", code: "+975" },
-  { id: 58, name: "Əfqanıstan", price: 0.35, rate: "75%", flag: "🇦🇫", code: "+93" },
+  { id: 58, name: "Əfqanıstan", price: 0.35, rate: "75%", flag: "🇦𝒇", code: "+93" },
   { id: 59, name: "Malayziya", price: 0.50, rate: "92%", flag: "🇲🇾", code: "+60" },
   { id: 60, name: "Sinqapur", price: 1.50, rate: "99%", flag: "🇸🇬", code: "+65" },
   { id: 61, name: "Tayland", price: 0.40, rate: "91%", flag: "🇹🇭", code: "+66" },
@@ -218,7 +218,7 @@ const btnCopyNum = document.getElementById('btn-copy-num');
 const btnAddFunds = document.getElementById('btn-add-funds');
 const searchInput = document.getElementById('search-country');
 
-// Özəl Alert Sistemi (Brauzerin pop-up pəncərələrini əvəz edir)
+// Özəl Alert Sistemi
 function showMessage(text, icon = "⚠️") {
   const alertModal = document.getElementById('custom-alert');
   const alertMsg = document.getElementById('alert-message');
@@ -231,30 +231,30 @@ function showMessage(text, icon = "⚠️") {
   }
 }
 
-document.getElementById('alert-close-btn').onclick = () => {
-  document.getElementById('custom-alert').classList.add('hidden');
-};
+if (document.getElementById('alert-close-btn')) {
+  document.getElementById('alert-close-btn').onclick = () => {
+    document.getElementById('custom-alert').classList.add('hidden');
+  };
+}
 
-
-
-
-
-// 1. Unikal İstifadəçi Girişi və Balans Təyini (Google Auth)
+// 1. Unikal İstifadəçi Girişi və Profil Yaradılması (Google Auth)
 async function initializeUser() {
   if (!supabaseClient) return;
 
   // Mövcud sessiyanı yoxlayırıq
   let { data: { session } } = await supabaseClient.auth.getSession();
   
-  // Əgər istifadəçi giriş etməyibsə, interfeysdə yalnız Giriş Düyməsini göstəririk
   if (!session) {
     showLoginOverlay();
     return;
   }
 
-  // Giriş uğurludursa, overlay-i gizlədirik
+  // Giriş uğurludursa overlay-i gizlədirik
   hideLoginOverlay();
   CURRENT_USER_ID = session.user.id;
+  
+  // Üst menuda istifadəçinin adını və Çıxış düyməsini render edirik
+  renderUserHeader(session.user);
 
   try {
     // Profilin mövcudluğunu yoxlayırıq
@@ -264,19 +264,19 @@ async function initializeUser() {
       .eq('id', CURRENT_USER_ID)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error && error.code !== 'PGRST116') throw error;
 
-    // Əgər bu Gmail ilə İLK DƏFƏ girirsə, profil yaradırıq və 10 AZN veririk
+    // Əgər Gmail ilə İLK DƏFƏ girirsə, profil yaradırıq (10.00 AZN Hədiyyə)
     if (!profile) {
       const { error: insertError } = await supabaseClient
         .from('profiles')
         .insert([{ id: CURRENT_USER_ID, balance: 10.00 }]);
         
       if (insertError) throw insertError;
-      console.log("Yeni istifadəçi qeydə alındı, 10 AZN balans təyin edildi.");
+      console.log("Yeni Gmail profili verilənlər bazasında yaradıldı, 10 AZN balans təyin edildi.");
     }
 
-    // Balansı ekrana yazdırırıq və aktiv sifarişləri yoxlayırıq
+    // Məlumatları yükləyirik
     await loadUserBalance();
     await checkActiveOrder();
 
@@ -285,13 +285,37 @@ async function initializeUser() {
   }
 }
 
+// Menuda istifadəçi profilini və çıxış düyməsini göstərən funksiya
+function renderUserHeader(user) {
+  let userNav = document.getElementById("user-nav-panel");
+  if (!userNav) {
+    userNav = document.createElement("div");
+    userNav.id = "user-nav-panel";
+    userNav.className = "flex items-center gap-3 text-xs text-slate-300 bg-slate-900/50 p-2 rounded-xl border border-slate-800/80 ml-auto";
+    
+    // Header elementini tap və nav panelini yerləşdir
+    const targetHeader = document.querySelector("header") || document.body.firstChild;
+    targetHeader.appendChild(userNav);
+  }
+  
+  const userDisplayName = user.user_metadata.full_name || user.email;
+  
+  userNav.innerHTML = `
+    <span class="font-medium text-slate-400 hidden sm:inline">${userDisplayName}</span>
+    <button id="btn-app-logout" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg transition-all active:scale-95 cursor-pointer font-bold">
+      Çıxış
+    </button>
+  `;
+  
+  document.getElementById("btn-app-logout").addEventListener("click", handleSignOut);
+}
+
 // Google ilə Giriş funksiyası
 async function signInWithGoogle() {
   try {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // İstifadəçi daxil olduqdan sonra yönləndiriləcək ünvan (GitHub Pages linkin)
         redirectTo: window.location.origin + window.location.pathname
       }
     });
@@ -301,25 +325,25 @@ async function signInWithGoogle() {
   }
 }
 
-// Çıxış funksiyası (Ehtiyac olarsa harasa qoyarsan)
+// Çıxış funksiyası
 async function handleSignOut() {
   await supabaseClient.auth.signOut();
   window.location.reload();
 }
 
-// Giriş pəncərəsini göstərmək və gizlətmək üçün köməkçi funksiyalar
+// Giriş overlay pəncərəsinin idarəetməsi
 function showLoginOverlay() {
   let overlay = document.getElementById("login-overlay");
   if (!overlay) {
     overlay = document.createElement("div");
     overlay.id = "login-overlay";
-    overlay.className = "fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-6 text-center animate-fade-in";
+    overlay.className = "fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-6 text-center";
     overlay.innerHTML = `
       <div class="max-w-xs w-full bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-5">
         <div class="text-4xl">⚡</div>
         <h2 class="text-xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">QuickSIM-ə Xoş Gəldiniz</h2>
         <p class="text-xs text-slate-400 leading-relaxed">Daxil olun, balansınıza pulsuz <span class="text-emerald-400 font-bold">10.00 AZN</span> hədiyyə alın və dərhal virtual nömrə sifariş edin!</p>
-        <button id="btn-google-login" class="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-lg shadow-white/5">
+        <button id="btn-google-login" class="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer shadow-lg">
           <svg class="w-4 h-4" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.53-1.14 2.82-2.4 3.68v3.06h3.88c2.27-2.09 3.57-5.17 3.57-8.59Z"/>
             <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.06c-1.08.72-2.45 1.16-4.05 1.16-3.11 0-5.74-2.11-6.68-4.96H1.21v3.15C3.18 21.88 7.31 24 12 24Z"/>
@@ -331,7 +355,6 @@ function showLoginOverlay() {
       </div>
     `;
     document.body.appendChild(overlay);
-    
     document.getElementById("btn-google-login").addEventListener("click", signInWithGoogle);
   }
   overlay.classList.remove("hidden");
@@ -341,12 +364,6 @@ function hideLoginOverlay() {
   const overlay = document.getElementById("login-overlay");
   if (overlay) overlay.classList.add("hidden");
 }
-
-
-
-
-
-
 
 // 2. Balansı Yüklə və DOM-a Yaz
 async function loadUserBalance() {
@@ -437,17 +454,26 @@ async function buyNumber(country) {
     return;
   }
 
-  const { data: order } = await supabaseClient
+  // TEST Rejimi: 0 AZN fiks qiymətlə baza sifarişi göndərilir
+  const testPrice = 0.00;
+
+  const { data: order, error } = await supabaseClient
     .from('orders')
     .insert([{ 
         user_id: CURRENT_USER_ID, 
         country_id: country.id, 
-        price: country.price,
+        price: testPrice,
         status: 'pending',
         phone_number: 'Yüklənir...' 
     }])
     .select()
     .single();
+
+  if (error) {
+    console.error("Sifariş yaradılarkən xəta:", error.message);
+    showMessage("Sifariş xətası: " + error.message, "🚫");
+    return;
+  }
 
   if (order) {
     currentOrderId = order.id;
@@ -488,7 +514,7 @@ function showOrderUI(order, durationSeconds) {
   }, 1000);
 }
 
-// 7. Canlı Dinləmə Modulu
+// 7. Canlı Dinləmə Modulu (Real-time updates)
 function listenToOrderChanges(orderId) {
   if (!supabaseClient) return;
   if (activeOrderSubscription) supabaseClient.removeChannel(activeOrderSubscription);
@@ -526,7 +552,7 @@ async function cancelOrder() {
     activeSection.classList.add('hidden');
     currentOrderId = null;
     loadUserBalance();
-    showMessage("Sifariş ləğv edildi, məbləğ balansınıza qaytarıldı.", "🔄");
+    showMessage("Sifariş ləğv edildi.", "🔄");
   }
 }
 
@@ -550,19 +576,24 @@ function simulateProviderAPI(orderId, countryCode) {
 }
 
 // Event Dinləyiciləri
-searchInput.oninput = (e) => renderCountries(e.target.value);
-btnCancel.onclick = () => cancelOrder();
-btnCopyNum.onclick = () => {
-  navigator.clipboard.writeText(numDisplay.innerText);
-  showMessage("Nömrə müvəffəqiyyətlə kopyalandı!", "📋");
-};
-btnAddFunds.onclick = async () => {
-  if (!supabaseClient || !CURRENT_USER_ID) return;
-  const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).maybeSingle();
-  const currentBal = data ? data.balance : 0;
-  await supabaseClient.from('profiles').update({ balance: (currentBal + 5.00) }).eq('id', CURRENT_USER_ID);
-  loadUserBalance();
-};
+if (searchInput) searchInput.oninput = (e) => renderCountries(e.target.value);
+if (btnCancel) btnCancel.onclick = () => cancelOrder();
+if (btnCopyNum) {
+  btnCopyNum.onclick = () => {
+    navigator.clipboard.writeText(numDisplay.innerText);
+    showMessage("Nömrə müvəffəqiyyətlə kopyalandı!", "📋");
+  };
+}
+
+if (btnAddFunds) {
+  btnAddFunds.onclick = async () => {
+    if (!supabaseClient || !CURRENT_USER_ID) return;
+    const { data } = await supabaseClient.from('profiles').select('balance').eq('id', CURRENT_USER_ID).maybeSingle();
+    const currentBal = data ? data.balance : 0;
+    await supabaseClient.from('profiles').update({ balance: (parseFloat(currentBal) + 5.00) }).eq('id', CURRENT_USER_ID);
+    loadUserBalance();
+  };
+}
 
 window.onload = () => {
   initializeUser();
